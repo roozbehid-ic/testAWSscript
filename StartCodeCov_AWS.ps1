@@ -169,8 +169,15 @@ $jMSService.description = "MediaServer Service Installation test pending."
 $jMSService.context = "CI/AWS/MediaServerService"
 
 
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$github_access_token = '?access_token=xxxxx'
 
-$github_access_token = '?access_token=xxxxxxxxxxxxxxx'
+$pull_info = Invoke-WebRequest  -Method GET -Uri ("https://api.github.com/repos/roozbehid-ic/testAWSscript/pulls/1"+$github_access_token) -UseBasicParsing
+$js_pull_info = $pull_info.content | ConvertFrom-Json
+$github_status_url = $js_pull_info.statuses_url + $github_access_token
+
+$comments_url = $js_pull_info.comments_url #not adding access_token as we might change it!
+
 
 
 
@@ -178,25 +185,20 @@ $github_access_token = '?access_token=xxxxxxxxxxxxxxx'
 # here you are Normal Media Server!
 	Write-Verbose "Adding github statuses..." -Verbose
 	
-##	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jgateway) -Uri $github_status_url  -UseBasicParsing | Out-Null
-##	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jsipp) -Uri $github_status_url  -UseBasicParsing | Out-Null
-##	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jMSAutoRun) -Uri $github_status_url -UseBasicParsing | Out-Null
-##	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jAAAutoRun) -Uri $github_status_url -UseBasicParsing | Out-Null
-##	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jMSService) -Uri $github_status_url -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jgateway) -Uri $github_status_url  -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jsipp) -Uri $github_status_url  -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jMSAutoRun) -Uri $github_status_url -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jAAAutoRun) -Uri $github_status_url -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jMSService) -Uri $github_status_url -UseBasicParsing | Out-Null
 	
 
 
 	$jMSService.state = "success"
 	$jMSService.description = "MediaServer Service Start-Stop passed. :heavy_check_mark:"
-##	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jMSService) -Uri $github_status_url -UseBasicParsing | Out-Null
-	Start-Sleep -s 5
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jMSService) -Uri $github_status_url -UseBasicParsing | Out-Null
 	
 
 	$noindicator = ":grey_exclamation:"
-	$bechmark_result | Add-Member -MemberType NoteProperty "Avg %D" -Value $noindicator
-	$bechmark_result | Add-Member -MemberType NoteProperty "Max %D" -Value $noindicator
-
-	$benchmark_table = ConvertTo-DataTable -Source $bechmark_result
 
 	Write-Verbose "Benchmark Done." -Verbose
 
@@ -275,10 +277,10 @@ $js_comment_body = ConvertFrom-Json $comment_body
 		$jAAAutoRun.description = $jAAAutoRun.description + " :heavy_check_mark:"
 	}
 	
-#	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jgateway) -Uri $github_status_url -UseBasicParsing | Out-Null
-#	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jsipp) -Uri $github_status_url  -UseBasicParsing | Out-Null
-#	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jMSAutoRun) -Uri $github_status_url -UseBasicParsing | Out-Null
-#	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jAAAutoRun) -Uri $github_status_url -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jgateway) -Uri $github_status_url -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jsipp) -Uri $github_status_url  -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jMSAutoRun) -Uri $github_status_url -UseBasicParsing | Out-Null
+	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $jAAAutoRun) -Uri $github_status_url -UseBasicParsing | Out-Null
 
 	
 
@@ -298,7 +300,7 @@ If ($comments_url -ne $null)
 
 	}
 	
-	$hash.DataTable.Merge($dtEvents)
+	
 
 	$found_AWS_Comment = $null
 	$comments_list = (Invoke-WebRequest  -Method GET -Uri ($comments_url + $github_access_token) -UseBasicParsing).Content | ConvertFrom-Json
@@ -316,33 +318,24 @@ If ($comments_url -ne $null)
 	$diskusage = (($diskbefore.Free - $diskafter.Free) / 1024)
 	$diskfilesusage = $diskfilesafter - $diskfilesbefore
 	
-	if ($Env:My_MediaServerMode -eq "Normal"){
+
+
 		if ($diskusage -ge 450000) {$diskusage_alertcode = "&#x1F621;"} else {$diskusage_alertcode = "&#x1F60A;"}
 		if ($diskfilesusage -ge 3000) {$diskfileusage_alertcode = "&#x1F621;"} else {$diskfileusage_alertcode = "&#x1F60A;"}
 		
 		$js_DiskUsage = [string]::Format("Disk usage was {0:n0}Kb $diskusage_alertcode \n New files created are {1:n0} $diskfileusage_alertcode",$diskusage,$diskfilesusage)
 
-		$Report_XML_Results = (Get-Content $ReportfilePath) | Out-String
+		$Report_XML_Results = ""
 		$commet_downloads = "Download report of [Standalone MRC Client](https://${jfrog_user}:$jfrog_pass@$jfrogurl_nofile/Normal/reports.zip) \n Download report of [TTS Media Server](https://${jfrog_user}:$jfrog_pass@$jfrogurl_nofile/TTS/reports.zip) \n "
 		$js_comment_xml = "Followings are test cases with errors ( Download [full xml](https://${jfrog_user}:$jfrog_pass@$jfrogurl_nofile) for list of all passed and failed.) : \n ``````xml $Report_XML_Results``````"
 		$js_comment_MSErrors = "### Followings are Standalone MRC Client Errors :\n" + "\n\n" + $js_DiskUsage + "\n" 
-		$js_comment_table = PrintTable $benchmark_table
+		$js_comment_table = "benchmark table"
 		$js_comment_perf = "Performance Index is " + $bechmark_perfIndex_text + "\n\nBenchmark results of Single MRC Client are :\n" + $js_comment_table + "\n"
 		$js_comment_MSTTSErrors = "### Followings are TTS Media Server Errors :\n TTS_REPORTS_PENDING..."
-		$js_comment_body.body = "# AWS Test Results (" + ($Env:MY_APPVEYOR_PULL_REQUEST_HEAD_COMMIT).SubString(0,7) + ")\n"
+		$js_comment_body.body = "# AWS Test Results (fefefef)\n"
 		$js_comment_body.body = $js_comment_body.body + "Testing finished at $(Get-Date  -format g)\n\n"
 		$js_comment_body.body = $js_comment_body.body + $jMSService.description + " \n " + $jsipp.description + " \n " + $jgateway.description + " \n " + $jMSAutoRun.description + " \n " + $jAAAutoRun.description+" \n\n $commet_downloads \n\n $js_comment_xml\n" + $js_comment_MSErrors + $js_comment_perf + "\n" + $js_comment_MSTTSErrors
-	##	Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $js_comment_body).replace("\\n","\n") -Uri ($comments_url + $github_access_token) -UseBasicParsing | ConvertFrom-Json
-	}
-	elseif ($found_AWS_Comment -ne $null){
-		if ($diskusage -ge 50000) {$diskusage_alertcode = "&#x1F621;"} else {$diskusage_alertcode = "&#x1F60A;"}
-		if ($diskfilesusage -ge 100) {$diskfileusage_alertcode = "&#x1F621;"} else {$diskfileusage_alertcode = "&#x1F60A;"}
-		
-		$js_DiskUsage = [string]::Format("Disk usage was {0:n0}Kb $diskusage_alertcode \n New files created are {1:n0} $diskfileusage_alertcode",$diskusage,$diskfilesusage)
-		
-		$js_comment_body.body = ($found_AWS_Comment.body).replace("TTS_REPORTS_PENDING...","\n\n $js_DiskUsage")
-##		Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $js_comment_body).replace("\\n","\n") -Uri ($comments_url + $github_access_token) -UseBasicParsing | ConvertFrom-Json
-	}
+		Invoke-WebRequest  -Method POST -Body (ConvertTo-Json $js_comment_body).replace("\\n","\n") -Uri ($comments_url + $github_access_token) -UseBasicParsing | ConvertFrom-Json
 	
 }
 
